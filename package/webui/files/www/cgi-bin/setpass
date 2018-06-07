@@ -1,0 +1,43 @@
+#!/bin/sh
+
+apass=''
+
+uci set wireless.ap.encryption=none
+uci delete wireless.ap.key
+uci commit
+
+if [ -n "$QUERY_STRING" ]; then
+    echo "Content-Type: application/json" >/dev/console
+    echo ""
+	firstexp=`echo $QUERY_STRING | cut -d'&' -f 1`
+	firstkey=`echo $firstexp | cut -d'=' -f 1`
+	firstvalue=`echo $firstexp | cut -d'=' -f 2`
+
+	if [ "$firstkey"x = "password1"x -o "$firstkey"x = "passwd"x ]; then
+		apass=$firstvalue
+	else
+		echo "{\"result\"=\"error\",\"message\"=\"Please input the right format like password=xxxx\"}" >/dev/console
+		exit 1
+	fi
+
+elif [ -z "$1" ]; then
+	echo "Need to specify password, like setpass <password>" >/dev/console
+	exit 2
+else
+	apass=$1
+fi
+
+if [ "$apass"x != ""x ]; then              
+  echo "apass=${apass}" >/dev/console
+  uci set wireless.ap.encryption=psk2
+  uci set wireless.ap.key=$apass
+  uci commit
+fi 
+
+echo "{\"result\"=\"success\",\"message\"=\"operation finished\"}"
+# Restart network service
+#/etc/init.d/network restart 1>&- 2>&-
+#reboot
+wifi
+
+exit 0

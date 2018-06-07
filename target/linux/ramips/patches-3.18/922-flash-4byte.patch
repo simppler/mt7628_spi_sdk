@@ -1,0 +1,71 @@
+Index: linux-3.18.29/drivers/mtd/devices/m25p80.c
+===================================================================
+--- linux-3.18.29.orig/drivers/mtd/devices/m25p80.c	2017-06-29 12:14:42.690358359 +0800
++++ linux-3.18.29/drivers/mtd/devices/m25p80.c	2017-06-29 12:24:11.658355580 +0800
+@@ -326,6 +326,17 @@
+ 	return mtd_device_unregister(&flash->mtd);
+ }
+ 
++static void m25p_shutdown(struct spi_device *spi)
++{
++	struct m25p	*flash = spi_get_drvdata(spi);
++
++	// add spi flash reset code
++	flash->command[0] = 0x66;
++	spi_write(flash->spi, flash->command, 1);
++	flash->command[0] = 0x99;
++	spi_write(flash->spi, flash->command, 1);
++}
++
+ 
+ /*
+  * XXX This needs to be kept in sync with spi_nor_ids.  We can't share
+@@ -385,6 +396,7 @@
+ 	.id_table	= m25p_ids,
+ 	.probe	= m25p_probe,
+ 	.remove	= m25p_remove,
++	.shutdown = m25p_shutdown,
+ 
+ 	/* REVISIT: many of these chips have deep power-down modes, which
+ 	 * should clearly be entered on suspend() to minimize power use.
+Index: linux-3.18.29/drivers/mtd/spi-nor/spi-nor.c
+===================================================================
+--- linux-3.18.29.orig/drivers/mtd/spi-nor/spi-nor.c	2017-06-29 12:14:35.842358392 +0800
++++ linux-3.18.29/drivers/mtd/spi-nor/spi-nor.c	2017-06-29 12:26:44.638354832 +0800
+@@ -530,7 +530,7 @@
+ 	{ "mx25l6405d",  INFO(0xc22017, 0, 64 * 1024, 128, 0) },
+ 	{ "mx25l12805d", INFO(0xc22018, 0, 64 * 1024, 256, 0) },
+ 	{ "mx25l12855e", INFO(0xc22618, 0, 64 * 1024, 256, 0) },
+-	{ "mx25l25635e", INFO(0xc22019, 0, 64 * 1024, 512, 0) },
++	{ "mx25l25635e", INFO(0xc22019, 0, 64 * 1024, 512, SECT_4K) },
+ 	{ "mx25l25655e", INFO(0xc22619, 0, 64 * 1024, 512, 0) },
+ 	{ "mx66l51235l", INFO(0xc2201a, 0, 64 * 1024, 1024, SPI_NOR_QUAD_READ) },
+ 	{ "mx66l1g55g",  INFO(0xc2261b, 0, 64 * 1024, 2048, SPI_NOR_QUAD_READ) },
+@@ -1094,6 +1094,7 @@
+ 			nor->erase_opcode = SPINOR_OP_SE_4B;
+ 			mtd->erasesize = info->sector_size;
+ 		} else
++			dev_info(dev, "%08x set 4byte\n", info->jedec_id);
+ 			set_4byte(nor, info->jedec_id, 1);
+ 	} else {
+ 		nor->addr_width = 3;
+Index: linux-3.18.29/kernel/panic.c
+===================================================================
+--- linux-3.18.29.orig/kernel/panic.c	2016-03-18 16:16:27.000000000 +0800
++++ linux-3.18.29/kernel/panic.c	2017-06-29 12:28:24.018354347 +0800
+@@ -24,6 +24,7 @@
+ #include <linux/init.h>
+ #include <linux/nmi.h>
+ #include <linux/console.h>
++#include <linux/device.h>
+ 
+ #define PANIC_TIMER_STEP 100
+ #define PANIC_BLINK_SPD 18
+@@ -182,6 +183,7 @@
+ 		 * shutting down.  But if there is a chance of
+ 		 * rebooting the system it will be rebooted.
+ 		 */
++		device_shutdown();
+ 		emergency_restart();
+ 	}
+ #ifdef __sparc__

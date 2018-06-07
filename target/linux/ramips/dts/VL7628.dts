@@ -1,0 +1,174 @@
+/dts-v1/;
+
+/include/ "mt7628an.dtsi"
+
+/ {
+	compatible = "mediatek,vl7628-board", "mediatek,mt7628an-soc";
+	model = "VL7628";
+
+	pinctrl {
+		state_default: pinctrl0 {
+			i2c {
+				ralink,group = "i2c", "jtag";
+				ralink,function = "gpio";
+			};
+			i2s {
+				ralink,group = "i2s";
+				ralink,function = "gpio";
+			};
+			gpio {
+				ralink,group = "gpio";
+				ralink,function = "gpio";
+			};
+			refclk {
+				ralink,group = "refclk";
+				ralink,function = "gpio";
+			};
+			wdt {
+				ralink,group = "wdt";
+				ralink,function = "gpio";
+			};
+			wled_an {
+				ralink,group = "wled_an";
+				ralink,function = "wled_an";
+			};
+			pwm0 {
+				ralink,group = "pwm0";
+				ralink,function = "gpio";
+			};
+			pwm1 {
+				ralink,group = "pwm1";
+				ralink,function = "gpio";
+			};
+		};
+	};
+
+	palmbus@10000000 {
+		spi@b00 {
+			status = "okay";
+
+			m25p80@0 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "mx25l25635e";
+				reg = <0 0>;
+				linux,modalias = "m25p80", "mx25l25635e";
+				spi-max-frequency = <40000000>;
+				m25p,chunked-io = <31>;
+
+				partition@0 {
+					label = "u-boot";
+					reg = <0x0 0x30000>;
+					read-only;
+				};
+
+				partition@30000 {
+					label = "u-boot-env";
+					reg = <0x30000 0x10000>;
+					read-only;
+				};
+
+				factory: partition@40000 {
+					label = "factory";
+					reg = <0x40000 0x10000>;
+					read-only;
+				};
+
+				partition@50000 {
+					label = "firmware";
+					reg = <0x50000 0x1fb0000>;
+				};
+			};
+
+
+			spidev@1 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "spidev";
+				reg = <1 0>;
+				linux,modalias = "spidev", "spidev";
+				spi-max-frequency = <10000000>;
+			};
+		};
+
+		uart1@d00 {
+			status = "okay";
+		};
+
+		uart2@e00 {
+			status = "okay";
+		};
+
+	};
+
+	ethernet@10100000 {
+		mtd-mac-address = <&factory 0x4>;
+	};
+
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+		reset {
+			label = "reset";
+			gpios = <&gpio1 6 1>;
+			linux,code = <0x198>;
+		};
+	};
+/*
+	gpio-leds {
+		compatible = "gpio-leds";
+		eth {
+			label = "vl7628:orange:eth";
+			gpios = <&gpio1 11 0>;
+		};
+	};
+*/
+	gpio-export {
+		compatible = "gpio-export";
+		#size-cells = <0>;
+
+		gpio0 {
+			/* i2s sdi */
+			gpio-export,name = "gpio0";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 0 0>;
+		};
+
+		gpio1 {
+			/* i2s sdo */
+			gpio-export,name = "gpio1";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 1 0>;
+		};
+		gpio2 {
+			/* i2s ws */
+			gpio-export,name = "gpio2";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 2 0>;
+		};
+		gpio3 {
+			/* i2s clk */
+			gpio-export,name = "gpio3";
+			gpio-export,output = <1>;
+			gpios = <&gpio0 3 0>;
+		};
+		gpio4 {
+			/* i2c sclk */
+			gpio-export,name = "gpio4";
+			gpio-export,output = <0>;
+			gpios = <&gpio0 4 0>;
+		};
+		gpio5 {
+			/* i2c sd */
+			gpio-export,name = "gpio5";
+			gpio-export,output = <0>;
+			gpios = <&gpio0 5 0>;
+		};
+
+	};
+
+
+};
